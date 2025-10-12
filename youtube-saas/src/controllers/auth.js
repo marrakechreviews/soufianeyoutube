@@ -44,6 +44,24 @@ exports.register = async (req, res) => {
   }
 };
 
+exports.googleCallback = (req, res) => {
+  const payload = {
+    user: {
+      id: req.user.id,
+    },
+  };
+
+  jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    { expiresIn: 3600 },
+    (err, token) => {
+      if (err) throw err;
+      res.redirect(`http://localhost:3001/dashboard?token=${token}`);
+    }
+  );
+};
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 

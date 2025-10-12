@@ -2,6 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const passport = require('passport');
+
+// Passport config
+require('./config/passport');
 
 // Connect Database
 connectDB();
@@ -12,6 +16,9 @@ const port = process.env.PORT || 3000;
 // Init Middleware
 app.use(cors());
 app.use(express.json({ extended: false }));
+
+// Passport middleware
+app.use(passport.initialize());
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
