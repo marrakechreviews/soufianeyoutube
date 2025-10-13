@@ -24,9 +24,8 @@ const LoginPage = () => {
         'http://localhost:3000/api/auth/login',
         formData
       );
-      console.log(res.data); // Should contain the token
-      // TODO: Store token securely (e.g., in HttpOnly cookie)
-      router.push('/'); // Redirect to dashboard/home
+      localStorage.setItem('token', res.data.token);
+      router.push('/dashboard'); // Redirect to dashboard
     } catch (err: any) {
       console.error(err.response?.data?.msg || err.message);
       setError(err.response?.data?.msg || 'An error occurred');
