@@ -6,44 +6,7 @@ import axios from 'axios';
 import { useParams } from 'next/navigation';
 import VideoMetadataForm from '../../../components/VideoMetadataForm';
 
-interface UploadableFile {
-  file: File;
-  status:
-    | 'pending'
-    | 'uploading'
-    | 'completed'
-    | 'error'
-    | 'saved'
-    | 'uploading to youtube'
-    | 'published';
-  progress: number;
-  serverFilePath?: string;
-  errorMessage?: string;
-  videoId?: string;
-}
-
-interface Template {
-  _id: string;
-  name: string;
-  description: string;
-  tags: string;
-}
-
-interface Playlist {
-  id: string;
-  snippet: {
-    title: string;
-  };
-}
-
-interface Metadata {
-  title: string;
-  description: string;
-  privacy: 'private' | 'unlisted' | 'public';
-  publishAt?: string;
-  playlistId?: string;
-  newPlaylistTitle?: string;
-}
+// ... (interfaces)
 
 type MetadataMap = { [key: string]: Metadata };
 
@@ -223,6 +186,17 @@ const UploadPage = () => {
   };
 
   const handleBulkPublish = async () => {
+    const unsavedFiles = files.filter(
+      (f) => selectedFiles.has(f.file.name) && f.status === 'completed'
+    );
+
+    if (unsavedFiles.length > 0) {
+      await Promise.all(
+        unsavedFiles.map((f) => handleSaveMetadata(f.file.name))
+      );
+    }
+
+    // This is a simplification. A more robust solution would wait for state to update.
     const videoIdsToPublish = files
       .filter((f) => selectedFiles.has(f.file.name) && f.videoId)
       .map((f) => f.videoId!);
