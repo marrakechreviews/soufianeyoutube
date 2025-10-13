@@ -10,23 +10,30 @@ passport.use(
       callbackURL: '/api/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
-      const newUser = {
-        googleId: profile.id,
-        name: profile.displayName,
-        email: profile.emails[0].value,
-      };
-
       try {
         let user = await User.findOne({ googleId: profile.id });
 
         if (user) {
+          // Update tokens for existing user
+          user.googleAccessToken = accessToken;
+          user.googleRefreshToken = refreshToken;
+          await user.save();
           done(null, user);
         } else {
+          // Create a new user with tokens
+          const newUser = {
+            googleId: profile.id,
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            googleAccessToken: accessToken,
+            googleRefreshToken: refreshToken,
+          };
           user = await User.create(newUser);
           done(null, user);
         }
       } catch (err) {
         console.error(err);
+        done(err, null);
       }
     }
   )

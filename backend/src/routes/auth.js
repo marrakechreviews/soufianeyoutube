@@ -16,7 +16,7 @@ router.post('/login', login);
 // @route   GET api/auth/google
 // @desc    Authenticate with Google
 // @access  Public
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email', 'https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube'] }));
 
 // @route   GET api/auth/google/callback
 // @desc    Google auth callback
