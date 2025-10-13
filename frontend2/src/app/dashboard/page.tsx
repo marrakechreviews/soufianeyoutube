@@ -8,31 +8,24 @@ const DashboardPage = () => {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Effect 1: Handles setting the token from either the URL (after OAuth redirect)
-  // or from localStorage on subsequent visits.
   useEffect(() => {
     const tokenFromUrl = searchParams.get('token');
     if (tokenFromUrl) {
-      // The token from the URL is the newest source of truth.
       localStorage.setItem('token', tokenFromUrl);
       setToken(tokenFromUrl);
-      // Clean the token from the URL now that we've processed it.
       router.replace('/dashboard', { scroll: false });
     } else {
-      // If no token in URL, rely on what's in storage.
       setToken(localStorage.getItem('token'));
     }
   }, [searchParams, router]);
 
-  // Effect 2: Handles fetching channel data.
-  // This effect runs *only* when the `token` state variable changes.
   useEffect(() => {
     const fetchChannels = async () => {
       if (!token) {
-        // If there's no token, we're done loading and there are no channels.
         setLoading(false);
         setChannels([]);
         return;
@@ -48,8 +41,6 @@ const DashboardPage = () => {
         setChannels(res.data);
       } catch (err) {
         console.error('Error fetching channels:', err);
-        // If the token is invalid, we might get an error.
-        // Clear channels to reflect the error state.
         setChannels([]);
       } finally {
         setLoading(false);
@@ -57,7 +48,7 @@ const DashboardPage = () => {
     };
 
     fetchChannels();
-  }, [token]); // <-- This dependency is key to fixing the race condition.
+  }, [token]);
 
   const handleConnect = () => {
     window.location.href = 'http://localhost:3000/api/auth/google';
@@ -74,12 +65,15 @@ const DashboardPage = () => {
           },
         }
       );
-      // Clear token from state and storage to force a refresh of the UI
       localStorage.removeItem('token');
       setToken(null);
     } catch (err) {
       console.error('Error disconnecting account:', err);
     }
+  };
+
+  const handleChannelSelect = (channelId: string) => {
+    setSelectedChannelId(channelId);
   };
 
   if (loading) {
@@ -96,7 +90,9 @@ const DashboardPage = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Your YouTube Channels</h2>
+            <h2 className="text-xl font-semibold">
+              {channels.length > 0 ? 'Select a Channel' : 'Your YouTube Channels'}
+            </h2>
             <div>
               <button
                 onClick={handleConnect}
@@ -115,29 +111,46 @@ const DashboardPage = () => {
             </div>
           </div>
           {channels.length > 0 ? (
-            <ul className="space-y-4">
-              {channels.map((channel: any) => (
-                <li
-                  key={channel.id}
-                  className="p-4 bg-gray-50 rounded-lg flex items-center space-x-4"
-                >
-                  <img
-                    src={channel.snippet.thumbnails.default.url}
-                    alt={channel.snippet.title}
-                    className="w-16 h-16 rounded-full"
-                  />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {channel.snippet.title}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Subscribers: {channel.statistics.subscriberCount} | Videos:{' '}
-                      {channel.statistics.videoCount}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div>
+              <ul className="space-y-4">
+                {channels.map((channel: any) => (
+                  <li
+                    key={channel.id}
+                    className={`p-4 rounded-lg flex items-center space-x-4 cursor-pointer transition-colors ${
+                      selectedChannelId === channel.id
+                        ? 'bg-indigo-100 border-indigo-500 border-2'
+                        : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                    }`}
+                    onClick={() => handleChannelSelect(channel.id)}
+                  >
+                    <img
+                      src={channel.snippet.thumbnails.default.url}
+                      alt={channel.snippet.title}
+                      className="w-16 h-16 rounded-full"
+                    />
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {channel.snippet.title}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Subscribers: {channel.statistics.subscriberCount} | Videos:{' '}
+                        {channel.statistics.videoCount}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {selectedChannelId && (
+                <div className="mt-6 text-right">
+                  <button
+                    onClick={() => router.push(`/upload/${selectedChannelId}`)}
+                    className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700"
+                  >
+                    Continue to Upload for Selected Channel
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="text-center">
               <p className="text-gray-600 mb-4">
