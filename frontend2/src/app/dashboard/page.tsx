@@ -33,7 +33,7 @@ const DashboardPage = () => {
 
       setLoading(true);
       try {
-        const res = await axios.get('http://localhost:3000/api/youtube/channels', {
+        const res = await axios.get('/api/youtube/channels', {
           headers: {
             'x-auth-token': token,
           },
@@ -51,13 +51,13 @@ const DashboardPage = () => {
   }, [token]);
 
   const handleConnect = () => {
-    window.location.href = 'http://localhost:3000/api/auth/google';
+    window.location.href = '/api/auth/google';
   };
 
   const handleDisconnect = async () => {
     try {
       await axios.put(
-        'http://localhost:3000/api/youtube/disconnect',
+        '/api/youtube/disconnect',
         {},
         {
           headers: {

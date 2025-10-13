@@ -22,7 +22,7 @@ const RegisterPage = () => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        'http://localhost:3000/api/auth/register',
+        '/api/auth/register',
         formData
       );
       localStorage.setItem('token', res.data.token);
@@ -117,7 +117,7 @@ const RegisterPage = () => {
 
           <div className="mt-6">
             <a
-              href="http://localhost:3000/api/auth/google"
+              href="/api/auth/google"
               className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
             >
               <svg

@@ -19,7 +19,7 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
       const formData = new FormData();
       formData.append('video', file);
 
-      axios.post('http://localhost:3000/api/upload', formData, {
+      axios.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
