@@ -5,6 +5,7 @@ const {
   saveVideoMetadata,
   uploadToYouTube,
   uploadThumbnail,
+  bulkPublish,
 } = require('../controllers/video');
 
 // @route   POST api/videos
@@ -29,5 +30,10 @@ router.post(
   upload.single('thumbnail'),
   uploadThumbnail
 );
+
+// @route   POST api/videos/bulk-publish
+// @desc    Publish multiple videos to YouTube
+// @access  Private
+router.post('/bulk-publish', auth, bulkPublish);
 
 module.exports = router;

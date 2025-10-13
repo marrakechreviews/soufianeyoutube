@@ -31,6 +31,36 @@ exports.saveVideoMetadata = async (req, res) => {
   }
 };
 
+exports.bulkPublish = async (req, res) => {
+  const { videoIds } = req.body;
+  try {
+    // We can trigger the uploads in parallel
+    const uploadPromises = videoIds.map((videoId) => {
+      // We can reuse the uploadToYouTube logic, but we need to adapt it
+      // This is a simplified example. A robust implementation would
+      // likely refactor uploadToYouTube to be more reusable.
+      return new Promise(async (resolve, reject) => {
+        try {
+          const fakeReq = { params: { videoId }, user: req.user };
+          const fakeRes = {
+            json: resolve,
+            status: () => ({ json: reject }),
+          };
+          await exports.uploadToYouTube(fakeReq, fakeRes);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+
+    await Promise.all(uploadPromises);
+    res.json({ msg: 'Bulk publish initiated successfully' });
+  } catch (err) {
+    console.error('Bulk publish error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 exports.uploadThumbnail = async (req, res) => {
   try {
     if (!req.file) {
