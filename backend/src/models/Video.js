@@ -34,6 +34,15 @@ const VideoSchema = new mongoose.Schema({
   youtubeVideoId: {
     type: String,
   },
+  publishAt: {
+    type: Date,
+  },
+  thumbnailPath: {
+    type: String,
+  },
+  playlistId: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
