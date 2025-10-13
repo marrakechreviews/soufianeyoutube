@@ -3,6 +3,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
+import { useParams } from 'next/navigation';
 import VideoMetadataForm from '../../../components/VideoMetadataForm';
 
 // Define a more detailed structure for tracking file state
@@ -22,7 +23,9 @@ interface UploadableFile {
   videoId?: string;
 }
 
-const UploadPage = ({ params }: { params: { channelId: string } }) => {
+const UploadPage = () => {
+  const params = useParams();
+  const channelId = params.channelId as string;
   const [files, setFiles] = useState<UploadableFile[]>([]);
   const [token, setToken] = useState<string | null>(null);
 
@@ -30,70 +33,74 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
     setToken(localStorage.getItem('token'));
   }, []);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadableFile[] = acceptedFiles.map((file) => ({
-      file,
-      status: 'pending',
-      progress: 0,
-    }));
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const newFiles: UploadableFile[] = acceptedFiles.map((file) => ({
+        file,
+        status: 'pending',
+        progress: 0,
+      }));
 
-    setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+      setFiles((prevFiles) => [...prevFiles, ...newFiles]);
 
-    // Start the upload for each new file
-    newFiles.forEach((uploadableFile) => {
-      const formData = new FormData();
-      formData.append('video', uploadableFile.file);
+      // Start the upload for each new file
+      newFiles.forEach((uploadableFile) => {
+        const formData = new FormData();
+        formData.append('video', uploadableFile.file);
 
-      // Update file status to 'uploading'
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.file === uploadableFile.file ? { ...f, status: 'uploading' } : f
-        )
-      );
+        // Update file status to 'uploading'
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.file === uploadableFile.file ? { ...f, status: 'uploading' } : f
+          )
+        );
 
-      axios
-        .post('/api/upload', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / (progressEvent.total || 1)
-            );
+        axios
+          .post('/api/upload', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'x-auth-token': localStorage.getItem('token'), // Add token for auth
+            },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / (progressEvent.total || 1)
+              );
+              setFiles((prev) =>
+                prev.map((f) =>
+                  f.file === uploadableFile.file
+                    ? { ...f, progress: percentCompleted }
+                    : f
+                )
+              );
+            },
+          })
+          .then((response) => {
             setFiles((prev) =>
               prev.map((f) =>
                 f.file === uploadableFile.file
-                  ? { ...f, progress: percentCompleted }
+                  ? {
+                      ...f,
+                      status: 'completed',
+                      serverFilePath: response.data.filePath,
+                    }
                   : f
               )
             );
-          },
-        })
-        .then((response) => {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.file === uploadableFile.file
-                ? {
-                    ...f,
-                    status: 'completed',
-                    serverFilePath: response.data.filePath,
-                  }
-                : f
-            )
-          );
-        })
-        .catch((err) => {
-          console.error('Upload error:', err);
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.file === uploadableFile.file
-                ? { ...f, status: 'error', errorMessage: err.message }
-                : f
-            )
-          );
-        });
-    });
-  }, []);
+          })
+          .catch((err) => {
+            console.error('Upload error:', err);
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.file === uploadableFile.file
+                  ? { ...f, status: 'error', errorMessage: err.message }
+                  : f
+              )
+            );
+          });
+      });
+    },
+    [token]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -119,7 +126,7 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
         {
           ...metadata,
           filePath: fileToUpdate.serverFilePath,
-          channelId: params.channelId,
+          channelId: channelId,
         },
         {
           headers: {
@@ -144,7 +151,7 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
       setFiles((prev) =>
         prev.map((f) =>
           f.videoId === videoId
-            ? { ...f, status: 'uploading to youtube' as any }
+            ? { ...f, status: 'uploading to youtube' }
             : f
         )
       );
@@ -159,9 +166,7 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
       );
       setFiles((prev) =>
         prev.map((f) =>
-          f.videoId === videoId
-            ? { ...f, status: 'published' as any }
-            : f
+          f.videoId === videoId ? { ...f, status: 'published' } : f
         )
       );
     } catch (err) {
@@ -184,7 +189,9 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
         </span>
         <span
           className={`text-sm font-semibold ${
-            wrapper.status === 'completed' || wrapper.status === 'saved'
+            wrapper.status === 'completed' ||
+            wrapper.status === 'saved' ||
+            wrapper.status === 'published'
               ? 'text-green-600'
               : wrapper.status === 'error'
               ? 'text-red-600'
@@ -194,7 +201,8 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
           {wrapper.status.charAt(0).toUpperCase() + wrapper.status.slice(1)}
         </span>
       </div>
-      {wrapper.status === 'uploading' && (
+      {(wrapper.status === 'uploading' ||
+        wrapper.status === 'uploading to youtube') && (
         <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
           <div
             className="bg-indigo-600 h-2.5 rounded-full"
@@ -218,6 +226,9 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
           </button>
         </div>
       )}
+      {wrapper.status === 'published' && (
+         <p className="text-sm text-green-500 mt-1">Successfully published to YouTube!</p>
+      )}
       {wrapper.status === 'error' && (
         <p className="text-sm text-red-500 mt-1">{wrapper.errorMessage}</p>
       )}
@@ -228,7 +239,7 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
     <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">
-          Upload Videos for Channel ID: {params.channelId}
+          Upload Videos for Channel ID: {channelId}
         </h1>
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div
