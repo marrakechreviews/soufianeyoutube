@@ -7,26 +7,34 @@ import { useSearchParams, useRouter } from 'next/navigation';
 const DashboardPage = () => {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // Effect 1: Handle token from URL and localStorage
   useEffect(() => {
     const tokenFromUrl = searchParams.get('token');
+    let effectiveToken = localStorage.getItem('token');
+
     if (tokenFromUrl) {
       localStorage.setItem('token', tokenFromUrl);
-      // Clean the URL
-      router.replace('/dashboard', undefined);
+      effectiveToken = tokenFromUrl; // Use the new token immediately
+      router.replace('/dashboard', { scroll: false });
     }
 
-    const fetchChannels = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          // Handle case where user is not logged in
-          setLoading(false);
-          return;
-        }
+    setToken(effectiveToken);
+  }, [searchParams, router]);
 
+  // Effect 2: Fetch channels only when the token is available
+  useEffect(() => {
+    const fetchChannels = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
         const res = await axios.get('http://localhost:3000/api/youtube/channels', {
           headers: {
             'x-auth-token': token,
@@ -41,7 +49,7 @@ const DashboardPage = () => {
     };
 
     fetchChannels();
-  }, []);
+  }, [token]);
 
   const handleConnect = () => {
     window.location.href = 'http://localhost:3000/api/auth/google';
@@ -49,7 +57,6 @@ const DashboardPage = () => {
 
   const handleDisconnect = async () => {
     try {
-      const token = localStorage.getItem('token');
       await axios.put(
         'http://localhost:3000/api/youtube/disconnect',
         {},
@@ -59,7 +66,6 @@ const DashboardPage = () => {
           },
         }
       );
-      // Refresh the page to reflect the disconnected state
       window.location.reload();
     } catch (err) {
       console.error('Error disconnecting account:', err);
