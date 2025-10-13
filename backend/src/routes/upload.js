@@ -8,6 +8,7 @@ const upload = multer({ dest: 'uploads/' });
 // @route   POST api/upload
 // @desc    Upload a video file
 // @access  Private
-router.post('/', upload.single('video'), uploadVideo);
+const auth = require('../middleware/auth');
+router.post('/', auth, upload.single('video'), uploadVideo);
 
 module.exports = router;

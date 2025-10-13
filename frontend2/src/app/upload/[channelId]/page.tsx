@@ -1,38 +1,97 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
+import VideoMetadataForm from '../../../components/VideoMetadataForm';
 
-interface UploadProgress {
-  [key: string]: number;
+// Define a more detailed structure for tracking file state
+interface UploadableFile {
+  file: File;
+  status:
+    | 'pending'
+    | 'uploading'
+    | 'completed'
+    | 'error'
+    | 'saved'
+    | 'uploading to youtube'
+    | 'published';
+  progress: number;
+  serverFilePath?: string;
+  errorMessage?: string;
+  videoId?: string;
 }
 
 const UploadPage = ({ params }: { params: { channelId: string } }) => {
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
+  const [files, setFiles] = useState<UploadableFile[]>([]);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToken(localStorage.getItem('token'));
+  }, []);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+    const newFiles: UploadableFile[] = acceptedFiles.map((file) => ({
+      file,
+      status: 'pending',
+      progress: 0,
+    }));
 
-    acceptedFiles.forEach((file) => {
+    setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+
+    // Start the upload for each new file
+    newFiles.forEach((uploadableFile) => {
       const formData = new FormData();
-      formData.append('video', file);
+      formData.append('video', uploadableFile.file);
 
-      axios.post('/api/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+      // Update file status to 'uploading'
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.file === uploadableFile.file ? { ...f, status: 'uploading' } : f
+        )
+      );
+
+      axios
+        .post('/api/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent.total || 1)
+            );
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.file === uploadableFile.file
+                  ? { ...f, progress: percentCompleted }
+                  : f
+              )
+            );
+          },
+        })
+        .then((response) => {
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.file === uploadableFile.file
+                ? {
+                    ...f,
+                    status: 'completed',
+                    serverFilePath: response.data.filePath,
+                  }
+                : f
+            )
           );
-          setUploadProgress((prevProgress) => ({
-            ...prevProgress,
-            [file.name]: percentCompleted,
-          }));
-        },
-      });
+        })
+        .catch((err) => {
+          console.error('Upload error:', err);
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.file === uploadableFile.file
+                ? { ...f, status: 'error', errorMessage: err.message }
+                : f
+            )
+          );
+        });
     });
   }, []);
 
@@ -43,17 +102,125 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
     },
   });
 
-  const uploadedFiles = files.map((file) => (
-    <li key={file.name} className="mb-2">
-      <span>
-        {file.name} - {file.size} bytes
-      </span>
-      <div className="w-full bg-gray-200 rounded-full h-2.5">
-        <div
-          className="bg-indigo-600 h-2.5 rounded-full"
-          style={{ width: `${uploadProgress[file.name] || 0}%` }}
-        ></div>
+  const handleSaveMetadata = async (
+    file: File,
+    metadata: {
+      title: string;
+      description: string;
+      privacy: 'private' | 'unlisted' | 'public';
+    }
+  ) => {
+    const fileToUpdate = files.find((f) => f.file === file);
+    if (!fileToUpdate || !fileToUpdate.serverFilePath) return;
+
+    try {
+      const res = await axios.post(
+        '/api/videos',
+        {
+          ...metadata,
+          filePath: fileToUpdate.serverFilePath,
+          channelId: params.channelId,
+        },
+        {
+          headers: {
+            'x-auth-token': token,
+          },
+        }
+      );
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.file === file
+            ? { ...f, status: 'saved', videoId: res.data._id }
+            : f
+        )
+      );
+    } catch (err) {
+      console.error('Error saving metadata:', err);
+    }
+  };
+
+  const handleUploadToYouTube = async (videoId: string) => {
+    try {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.videoId === videoId
+            ? { ...f, status: 'uploading to youtube' as any }
+            : f
+        )
+      );
+      await axios.post(
+        `/api/videos/${videoId}/upload`,
+        {},
+        {
+          headers: {
+            'x-auth-token': token,
+          },
+        }
+      );
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.videoId === videoId
+            ? { ...f, status: 'published' as any }
+            : f
+        )
+      );
+    } catch (err) {
+      console.error('Error uploading to YouTube:', err);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.videoId === videoId
+            ? { ...f, status: 'error', errorMessage: 'YouTube upload failed' }
+            : f
+        )
+      );
+    }
+  };
+
+  const fileList = files.map((wrapper) => (
+    <li key={wrapper.file.name} className="mb-4 p-4 bg-gray-50 rounded-lg">
+      <div className="flex justify-between items-center">
+        <span className="font-medium text-gray-800">
+          {wrapper.file.name} - {(wrapper.file.size / 1024 / 1024).toFixed(2)} MB
+        </span>
+        <span
+          className={`text-sm font-semibold ${
+            wrapper.status === 'completed' || wrapper.status === 'saved'
+              ? 'text-green-600'
+              : wrapper.status === 'error'
+              ? 'text-red-600'
+              : 'text-indigo-600'
+          }`}
+        >
+          {wrapper.status.charAt(0).toUpperCase() + wrapper.status.slice(1)}
+        </span>
       </div>
+      {wrapper.status === 'uploading' && (
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+          <div
+            className="bg-indigo-600 h-2.5 rounded-full"
+            style={{ width: `${wrapper.progress}%` }}
+          ></div>
+        </div>
+      )}
+      {(wrapper.status === 'completed' || wrapper.status === 'saved') && (
+        <VideoMetadataForm
+          initialTitle={wrapper.file.name}
+          onSave={(metadata) => handleSaveMetadata(wrapper.file, metadata)}
+        />
+      )}
+      {wrapper.status === 'saved' && wrapper.videoId && (
+        <div className="mt-4 text-right">
+          <button
+            onClick={() => handleUploadToYouTube(wrapper.videoId!)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
+          >
+            Upload to YouTube
+          </button>
+        </div>
+      )}
+      {wrapper.status === 'error' && (
+        <p className="text-sm text-red-500 mt-1">{wrapper.errorMessage}</p>
+      )}
     </li>
   ));
 
@@ -82,8 +249,12 @@ const UploadPage = ({ params }: { params: { channelId: string } }) => {
             )}
           </div>
           <aside className="mt-6">
-            <h4 className="text-lg font-semibold">Files to Upload</h4>
-            <ul>{uploadedFiles}</ul>
+            <h4 className="text-lg font-semibold">Uploads</h4>
+            {files.length > 0 ? (
+              <ul>{fileList}</ul>
+            ) : (
+              <p className="text-sm text-gray-500">No files selected yet.</p>
+            )}
           </aside>
         </div>
       </div>
