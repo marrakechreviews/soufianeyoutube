@@ -11,25 +11,30 @@ const DashboardPage = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Effect 1: Handle token from URL and localStorage
+  // Effect 1: Handles setting the token from either the URL (after OAuth redirect)
+  // or from localStorage on subsequent visits.
   useEffect(() => {
     const tokenFromUrl = searchParams.get('token');
-    let effectiveToken = localStorage.getItem('token');
-
     if (tokenFromUrl) {
+      // The token from the URL is the newest source of truth.
       localStorage.setItem('token', tokenFromUrl);
-      effectiveToken = tokenFromUrl; // Use the new token immediately
+      setToken(tokenFromUrl);
+      // Clean the token from the URL now that we've processed it.
       router.replace('/dashboard', { scroll: false });
+    } else {
+      // If no token in URL, rely on what's in storage.
+      setToken(localStorage.getItem('token'));
     }
-
-    setToken(effectiveToken);
   }, [searchParams, router]);
 
-  // Effect 2: Fetch channels only when the token is available
+  // Effect 2: Handles fetching channel data.
+  // This effect runs *only* when the `token` state variable changes.
   useEffect(() => {
     const fetchChannels = async () => {
       if (!token) {
+        // If there's no token, we're done loading and there are no channels.
         setLoading(false);
+        setChannels([]);
         return;
       }
 
@@ -43,13 +48,16 @@ const DashboardPage = () => {
         setChannels(res.data);
       } catch (err) {
         console.error('Error fetching channels:', err);
+        // If the token is invalid, we might get an error.
+        // Clear channels to reflect the error state.
+        setChannels([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchChannels();
-  }, [token]);
+  }, [token]); // <-- This dependency is key to fixing the race condition.
 
   const handleConnect = () => {
     window.location.href = 'http://localhost:3000/api/auth/google';
@@ -66,7 +74,9 @@ const DashboardPage = () => {
           },
         }
       );
-      window.location.reload();
+      // Clear token from state and storage to force a refresh of the UI
+      localStorage.removeItem('token');
+      setToken(null);
     } catch (err) {
       console.error('Error disconnecting account:', err);
     }
