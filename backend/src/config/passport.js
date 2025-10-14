@@ -18,8 +18,15 @@ passport.use(
         let userId;
 
         if (token) {
-          const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          userId = decoded.user.id;
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            userId = decoded.user.id;
+          } catch (err) {
+            if (err.name !== 'TokenExpiredError') {
+              throw err; // Re-throw other JWT errors
+            }
+            // If token is expired, we proceed as if there was no token.
+          }
         }
 
         const existingGoogleAccount = await GoogleAccount.findOne({ googleId: profile.id });
