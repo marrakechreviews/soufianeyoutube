@@ -4,26 +4,79 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-// ... (interfaces)
+interface GoogleAccount {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+interface Channel {
+  id: string;
+  snippet: {
+    title: string;
+    thumbnails: {
+      default: {
+        url: string;
+      };
+    };
+  };
+  statistics: {
+    subscriberCount: string;
+    videoCount: string;
+  };
+}
 
 const DashboardPage = () => {
-  const [googleAccounts, setGoogleAccounts] = useState<any[]>([]);
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [channels, setChannels] = useState<any[]>([]);
-  const [loadingChannels, setLoadingChannels] = useState(false);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingChannels, setLoadingChannels] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ... (useEffect for token and accounts)
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get('token');
+    if (tokenFromUrl) {
+      localStorage.setItem('token', tokenFromUrl);
+      setToken(tokenFromUrl);
+      router.replace('/dashboard', { scroll: false });
+    } else {
+      setToken(localStorage.getItem('token'));
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchAccounts = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get('/api/youtube/accounts', {
+          headers: { 'x-auth-token': token },
+        });
+        setGoogleAccounts(res.data);
+        if (res.data.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(res.data[0]._id);
+        }
+      } catch (err) {
+        console.error('Error fetching Google accounts:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAccounts();
+  }, [token, selectedAccountId]);
 
   const fetchChannels = useCallback(async () => {
     if (!selectedAccountId || !token) {
       setChannels([]);
       return;
     }
-
     setLoadingChannels(true);
     try {
       const res = await axios.get(`/api/youtube/channels?googleAccountId=${selectedAccountId}`, {
@@ -32,62 +85,146 @@ const DashboardPage = () => {
       setChannels(res.data);
     } catch (err) {
       console.error('Error fetching channels:', err);
+    } finally {
+      setLoadingChannels(false);
     }
-    setLoadingChannels(false);
   }, [selectedAccountId, token]);
 
   useEffect(() => {
     fetchChannels();
   }, [fetchChannels]);
 
-  // ... (handleConnect, handleDisconnect)
+  const handleConnect = () => {
+    window.location.href = `/api/auth/google?token=${token}`;
+  };
 
-  const handleCreateChannel = () => {
-    window.open('https://www.youtube.com/create_channel', '_blank');
+  const handleDisconnect = async (accountId: string) => {
+    try {
+      await axios.delete(`/api/youtube/accounts/${accountId}`, {
+        headers: { 'x-auth-token': token },
+      });
+      setGoogleAccounts((prev) => prev.filter((acc) => acc._id !== accountId));
+      if (selectedAccountId === accountId) {
+        setSelectedAccountId(null);
+        setChannels([]);
+      }
+    } catch (err) {
+      console.error('Error disconnecting account:', err);
+    }
   };
 
   if (loading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-8">
-      {/* ... (header and accounts list) */}
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <button
+            onClick={() => router.push('/templates')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            Manage Templates
+          </button>
+        </div>
 
-      {selectedAccountId && (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">YouTube Channels</h2>
-            <button
-              onClick={fetchChannels}
-              className="px-3 py-1 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-md hover:bg-indigo-50"
-            >
-              Refresh Channel List
-            </button>
-          </div>
-
-          {loadingChannels ? (
-            <p>Loading channels...</p>
-          ) : channels.length > 0 ? (
-            <ul className="space-y-4">
-              {/* ... (channel list mapping) */}
-            </ul>
-          ) : (
-            <div className="text-center py-8">
-              <h3 className="text-lg font-medium text-gray-900">No YouTube Channels Found</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                This Google account does not have any YouTube channels associated with it yet.
-              </p>
-              <button
-                onClick={handleCreateChannel}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+          <h2 className="text-xl font-semibold mb-4">Connected Google Accounts</h2>
+          <ul className="space-y-2">
+            {googleAccounts.map((account) => (
+              <li
+                key={account._id}
+                onClick={() => setSelectedAccountId(account._id)}
+                className={`p-3 rounded-md cursor-pointer flex justify-between items-center transition-colors ${
+                  selectedAccountId === account._id ? 'bg-indigo-100' : 'hover:bg-gray-50'
+                }`}
               >
-                Create a Channel on YouTube
+                <div>
+                  <p className="font-medium">{account.name}</p>
+                  <p className="text-sm text-gray-500">{account.email}</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDisconnect(account._id);
+                  }}
+                  className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50"
+                >
+                  Disconnect
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={handleConnect}
+            className="mt-4 w-full text-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+          >
+            Add Another Google Account
+          </button>
+        </div>
+
+        {selectedAccountId && (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">YouTube Channels</h2>
+              <button
+                onClick={fetchChannels}
+                className="px-3 py-1 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-md hover:bg-indigo-50"
+              >
+                Refresh Channel List
               </button>
             </div>
-          )}
-        </div>
-      )}
+
+            {loadingChannels ? (
+              <p>Loading channels...</p>
+            ) : channels.length > 0 ? (
+              <ul className="space-y-4">
+                {channels.map((channel) => (
+                  <li
+                    key={channel.id}
+                    onClick={() => router.push(`/upload/${selectedAccountId}/${channel.id}`)}
+                    className="p-4 rounded-lg flex items-center space-x-4 cursor-pointer bg-gray-50 hover:bg-gray-100 border-2 border-transparent hover:border-indigo-500"
+                  >
+                    <img
+                      src={channel.snippet.thumbnails.default.url}
+                      alt={channel.snippet.title}
+                      className="w-16 h-16 rounded-full"
+                    />
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {channel.snippet.title}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Subscribers: {channel.statistics.subscriberCount} | Videos:{' '}
+                        {channel.statistics.videoCount}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center py-8">
+                <h3 className="text-lg font-medium text-gray-900">No YouTube Channels Found</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  This Google account does not have any YouTube channels associated with it yet.
+                </p>
+                <button
+                  onClick={() => window.open('https://www.youtube.com/create_channel', '_blank')}
+                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                >
+                  Create a Channel on YouTube
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
