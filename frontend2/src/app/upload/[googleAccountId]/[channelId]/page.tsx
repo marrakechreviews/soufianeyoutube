@@ -199,14 +199,15 @@ const UploadPage = () => {
     }
 
     // This is a simplification. A more robust solution would wait for state to update.
-    const videoIdsToPublish = files
-      .filter((f) => selectedFiles.has(f.file.name) && f.videoId)
-      .map((f) => f.videoId!);
+    setTimeout(async () => {
+      const videoIdsToPublish = files
+        .filter((f) => selectedFiles.has(f.file.name) && f.videoId)
+        .map((f) => f.videoId!);
 
-    if (videoIdsToPublish.length === 0) {
-      alert('No saved videos selected for publishing.');
-      return;
-    }
+      if (videoIdsToPublish.length === 0) {
+        alert('No saved videos selected for publishing.');
+        return;
+      }
 
     try {
       setFiles((prev) =>
@@ -233,6 +234,7 @@ const UploadPage = () => {
     } catch (err) {
       console.error('Error during bulk publish:', err);
     }
+    }, 500);
   };
 
   const fileList = files.map((wrapper) => {
