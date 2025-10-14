@@ -6,6 +6,11 @@ const VideoSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  googleAccount: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GoogleAccount',
+    required: true,
+  },
   channelId: {
     type: String,
     required: true,

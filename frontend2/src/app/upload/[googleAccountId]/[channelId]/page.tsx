@@ -12,6 +12,7 @@ type MetadataMap = { [key: string]: Metadata };
 
 const UploadPage = () => {
   const params = useParams();
+  const googleAccountId = params.googleAccountId as string;
   const channelId = params.channelId as string;
   const [files, setFiles] = useState<UploadableFile[]>([]);
   const [token, setToken] = useState<string | null>(null);
@@ -125,6 +126,7 @@ const UploadPage = () => {
         ...metadata,
         filePath: fileToUpdate.serverFilePath,
         channelId: channelId,
+          googleAccountId: googleAccountId,
       }, {
         headers: { 'x-auth-token': token },
       });
@@ -142,7 +144,7 @@ const UploadPage = () => {
     try {
       const res = await axios.post(
         '/api/youtube/playlists',
-        { title },
+        { title, googleAccountId },
         { headers: { 'x-auth-token': token } }
       );
       const newPlaylist = res.data;

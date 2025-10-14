@@ -9,11 +9,13 @@ exports.saveVideoMetadata = async (req, res) => {
     filePath,
     publishAt,
     playlistId,
+    googleAccountId,
   } = req.body;
 
   try {
     const newVideo = new Video({
       user: req.user.id,
+      googleAccount: googleAccountId,
       channelId,
       title,
       description,
@@ -91,18 +93,23 @@ const User = require('../models/User');
 
 exports.uploadToYouTube = async (req, res) => {
   try {
-    const video = await Video.findById(req.params.videoId);
+    const video = await Video.findById(req.params.videoId).populate('googleAccount');
     if (!video) {
       return res.status(404).json({ msg: 'Video not found' });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user || !user.googleAccessToken) {
-      return res.status(401).json({ msg: 'Not authorized' });
+    // Ensure the user owns the video they are trying to upload
+    if (video.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'User not authorized' });
+    }
+
+    const googleAccount = video.googleAccount;
+    if (!googleAccount || !googleAccount.accessToken) {
+      return res.status(401).json({ msg: 'Google account not connected or token is missing' });
     }
 
     const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: user.googleAccessToken });
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
 
     const youtube = google.youtube({
       version: 'v3',

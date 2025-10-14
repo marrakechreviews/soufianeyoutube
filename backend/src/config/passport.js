@@ -18,7 +18,7 @@ passport.use(
         let userId;
 
         // Scenario 1: Existing user is connecting a new Google account
-        if (state.token) {
+        if (state.token && state.token !== 'null') {
           const decoded = jwt.verify(state.token, process.env.JWT_SECRET);
           userId = decoded.user.id;
         }

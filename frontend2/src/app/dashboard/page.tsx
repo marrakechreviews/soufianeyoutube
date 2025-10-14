@@ -9,7 +9,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 const DashboardPage = () => {
   const [googleAccounts, setGoogleAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [channels, setChannels]        = useState<any[]>([]);
+  const [channels, setChannels] = useState<any[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
@@ -22,20 +23,14 @@ const DashboardPage = () => {
   };
 
   const handleDisconnect = async (accountId: string) => {
-    try {
-      await axios.delete(`/api/youtube/accounts/${accountId}`, {
-        headers: { 'x-auth-token': token },
-      });
-      // Refresh the list of accounts
-      setGoogleAccounts((prev) => prev.filter((acc) => acc._id !== accountId));
-      if (selectedAccountId === accountId) {
-        setSelectedAccountId(null);
-        setChannels([]);
-      }
-    } catch (err) {
-      console.error('Error disconnecting account:', err);
-    }
+    // ...
   };
+
+  useEffect(() => {
+    if (selectedAccountId && selectedChannelId) {
+      router.push(`/upload/${selectedAccountId}/${selectedChannelId}`);
+    }
+  }, [selectedAccountId, selectedChannelId, router]);
 
   // ... (loading state)
 
@@ -43,41 +38,29 @@ const DashboardPage = () => {
     <div className="container mx-auto p-8">
       {/* ... */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold mb-4">Connected Google Accounts</h2>
-        <ul className="space-y-2">
-          {googleAccounts.map((account) => (
-            <li
-              key={account._id}
-              onClick={() => setSelectedAccountId(account._id)}
-              className={`p-3 rounded-md cursor-pointer flex justify-between items-center ${
-                selectedAccountId === account._id ? 'bg-indigo-100' : 'hover:bg-gray-50'
-              }`}
-            >
-              <div>
-                <p className="font-medium">{account.name}</p>
-                <p className="text-sm text-gray-500">{account.email}</p>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent li onClick from firing
-                  handleDisconnect(account._id);
-                }}
-                className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50"
-              >
-                Disconnect
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button
-          onClick={handleConnect}
-          className="mt-4 w-full text-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-        >
-          Add Another Google Account
-        </button>
+        {/* ... (google accounts list) */}
       </div>
 
-      {/* ... (channel list) */}
+      {selectedAccountId && (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Select a YouTube Channel</h2>
+          <ul className="space-y-4">
+            {channels.map((channel: any) => (
+              <li
+                key={channel.id}
+                onClick={() => setSelectedChannelId(channel.id)}
+                className={`p-4 rounded-lg flex items-center space-x-4 cursor-pointer transition-colors ${
+                  selectedChannelId === channel.id
+                    ? 'bg-indigo-100 border-indigo-500 border-2'
+                    : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                }`}
+              >
+                {/* ... (channel info) */}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

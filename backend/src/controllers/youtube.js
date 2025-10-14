@@ -44,16 +44,19 @@ exports.getGoogleAccounts = async (req, res) => {
 };
 
 exports.createPlaylist = async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, googleAccountId } = req.body;
 
   try {
-    const user = await User.findById(req.user.id);
-    if (!user || !user.googleAccessToken) {
+    const googleAccount = await GoogleAccount.findOne({
+      _id: googleAccountId,
+      user: req.user.id,
+    });
+    if (!googleAccount || !googleAccount.accessToken) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
     const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: user.googleAccessToken });
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
 
     const youtube = google.youtube({
       version: 'v3',
@@ -82,13 +85,17 @@ exports.createPlaylist = async (req, res) => {
 
 exports.getPlaylists = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user || !user.googleAccessToken) {
+    const { googleAccountId } = req.query;
+    const googleAccount = await GoogleAccount.findOne({
+      _id: googleAccountId,
+      user: req.user.id,
+    });
+    if (!googleAccount || !googleAccount.accessToken) {
       return res.status(401).json({ msg: 'Not authorized' });
     }
 
     const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: user.googleAccessToken });
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
 
     const youtube = google.youtube({
       version: 'v3',
