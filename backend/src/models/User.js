@@ -13,15 +13,6 @@ const UserSchema = new mongoose.Schema({
   password: {
     type: String,
   },
-  googleId: {
-    type: String,
-  },
-  googleAccessToken: {
-    type: String,
-  },
-  googleRefreshToken: {
-    type: String,
-  },
   createdAt: {
     type: Date,
     default: Date.now,

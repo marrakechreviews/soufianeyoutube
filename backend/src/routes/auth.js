@@ -16,14 +16,35 @@ router.post('/login', login);
 // @route   GET api/auth/google
 // @desc    Authenticate with Google
 // @access  Public
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email', 'https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube'] }));
+router.get('/google', (req, res, next) => {
+  const token = req.query.token || req.header('x-auth-token');
+  let state = {};
+
+  if (token) {
+    state.token = token;
+  }
+
+  const stateString = Buffer.from(JSON.stringify(state)).toString('base64');
+
+  passport.authenticate('google', {
+    scope: [
+      'profile',
+      'email',
+      'https://www.googleapis.com/auth/youtube.upload',
+      'https://www.googleapis.com/auth/youtube',
+    ],
+    state: stateString,
+    accessType: 'offline',
+    prompt: 'consent',
+  })(req, res, next);
+});
 
 // @route   GET api/auth/google/callback
 // @desc    Google auth callback
 // @access  Public
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login', session: false }),
+  passport.authenticate('google', { failureRedirect: '/login' }),
   googleCallback
 );
 

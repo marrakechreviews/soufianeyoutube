@@ -45,18 +45,23 @@ exports.register = async (req, res) => {
 };
 
 exports.googleCallback = (req, res) => {
+  // The user object here is the application user from the passport strategy
   const payload = {
     user: {
       id: req.user.id,
     },
   };
 
+  // Create a new token for the user
   jwt.sign(
     payload,
     process.env.JWT_SECRET,
     { expiresIn: 3600 },
     (err, token) => {
       if (err) throw err;
+      // Always redirect to the dashboard. If the user was already logged in,
+      // the frontend will just handle the new data. If it's a new login,
+      // it will use the token from the URL.
       res.redirect(`http://localhost:3001/dashboard?token=${token}`);
     }
   );

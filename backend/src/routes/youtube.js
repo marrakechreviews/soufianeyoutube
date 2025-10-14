@@ -6,6 +6,7 @@ const {
   getPlaylists,
   createPlaylist,
   disconnectAccount,
+  getGoogleAccounts,
 } = require('../controllers/youtube');
 
 // @route   GET api/youtube/channels
@@ -23,9 +24,14 @@ router.get('/playlists', auth, getPlaylists);
 // @access  Private
 router.post('/playlists', auth, createPlaylist);
 
-// @route   PUT api/youtube/disconnect
-// @desc    Disconnect user's YouTube account
+// @route   GET api/youtube/accounts
+// @desc    Get user's connected Google accounts
 // @access  Private
-router.put('/disconnect', auth, disconnectAccount);
+router.get('/accounts', auth, getGoogleAccounts);
+
+// @route   DELETE api/youtube/accounts/:accountId
+// @desc    Disconnect a Google account
+// @access  Private
+router.delete('/accounts/:accountId', auth, disconnectAccount);
 
 module.exports = router;

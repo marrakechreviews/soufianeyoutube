@@ -3,14 +3,18 @@ const User = require('../models/User');
 
 exports.getChannels = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const { googleAccountId } = req.query;
+    const googleAccount = await GoogleAccount.findOne({
+      _id: googleAccountId,
+      user: req.user.id, // Ensure the account belongs to the logged-in user
+    });
 
-    if (!user || !user.googleAccessToken) {
-      return res.status(401).json({ msg: 'Not authorized to access this resource' });
+    if (!googleAccount || !googleAccount.accessToken) {
+      return res.status(401).json({ msg: 'Google account not found or not authorized' });
     }
 
     const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: user.googleAccessToken });
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
 
     const youtube = google.youtube({
       version: 'v3',
@@ -25,6 +29,16 @@ exports.getChannels = async (req, res) => {
     res.json(response.data.items);
   } catch (err) {
     console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.getGoogleAccounts = async (req, res) => {
+  try {
+    const accounts = await GoogleAccount.find({ user: req.user.id });
+    res.json(accounts);
+  } catch (err) {
+    console.error('Error fetching google accounts:', err.message);
     res.status(500).send('Server Error');
   }
 };
@@ -95,19 +109,18 @@ exports.getPlaylists = async (req, res) => {
 
 exports.disconnectAccount = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const account = await GoogleAccount.findOne({
+      _id: req.params.accountId,
+      user: req.user.id,
+    });
 
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
+    if (!account) {
+      return res.status(404).json({ msg: 'Google account not found' });
     }
 
-    user.googleId = undefined;
-    user.googleAccessToken = undefined;
-    user.googleRefreshToken = undefined;
+    await account.remove();
 
-    await user.save();
-
-    res.json({ msg: 'YouTube account disconnected successfully' });
+    res.json({ msg: 'Google account disconnected successfully' });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
