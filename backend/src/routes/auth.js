@@ -18,13 +18,7 @@ router.post('/login', login);
 // @access  Public
 router.get('/google', (req, res, next) => {
   const token = req.query.token || req.header('x-auth-token');
-  let state = {};
-
-  if (token) {
-    state.token = token;
-  }
-
-  const stateString = Buffer.from(JSON.stringify(state)).toString('base64');
+  const stateString = token ? Buffer.from(token).toString('base64') : undefined;
 
   passport.authenticate('google', {
     scope: [
@@ -44,7 +38,7 @@ router.get('/google', (req, res, next) => {
 // @access  Public
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login', session: false }),
+  passport.authenticate('google', { failureRedirect: '/login' }),
   googleCallback
 );
 

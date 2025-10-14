@@ -21,11 +21,12 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        '/api/auth/login',
+        'http://localhost:3000/api/auth/login',
         formData
       );
-      localStorage.setItem('token', res.data.token);
-      router.push('/dashboard'); // Redirect to dashboard
+      console.log(res.data); // Should contain the token
+      // TODO: Store token securely (e.g., in HttpOnly cookie)
+      router.push('/'); // Redirect to dashboard/home
     } catch (err: any) {
       console.error(err.response?.data?.msg || err.message);
       setError(err.response?.data?.msg || 'An error occurred');
@@ -100,7 +101,7 @@ const LoginPage = () => {
 
           <div className="mt-6">
             <a
-              href="/api/auth/google"
+              href="http://localhost:3000/api/auth/google"
               className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
             >
               <svg

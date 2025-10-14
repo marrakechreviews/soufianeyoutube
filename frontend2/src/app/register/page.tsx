@@ -22,11 +22,12 @@ const RegisterPage = () => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        '/api/auth/register',
+        'http://localhost:3000/api/auth/register',
         formData
       );
-      localStorage.setItem('token', res.data.token);
-      router.push('/dashboard'); // Redirect to dashboard after successful registration
+      console.log(res.data); // Should contain the token
+      // TODO: Store token and redirect
+      router.push('/login');
     } catch (err: any) {
       console.error(err.response?.data?.msg || err.message);
       setError(err.response?.data?.msg || 'An error occurred');
@@ -37,7 +38,7 @@ const RegisterPage = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center text-gray-900">
-          Create your account
+          Create an Account
         </h1>
         <form className="mt-8 space-y-6" onSubmit={onSubmit}>
           {error && (
@@ -54,7 +55,6 @@ const RegisterPage = () => {
                 id="name"
                 name="name"
                 type="text"
-                autoComplete="name"
                 required
                 className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-none appearance-none rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Name"
@@ -117,7 +117,7 @@ const RegisterPage = () => {
 
           <div className="mt-6">
             <a
-              href="/api/auth/google"
+              href="http://localhost:3000/api/auth/google"
               className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
             >
               <svg
