@@ -57,9 +57,72 @@ exports.getChannels = async (req, res) => {
 };
 
 exports.getPlaylists = async (req, res) => {
-  // ... (implementation needed)
+  try {
+    const { googleAccountId } = req.query;
+    const googleAccount = await GoogleAccount.findOne({
+      _id: googleAccountId,
+      user: req.user.id,
+    });
+    if (!googleAccount || !googleAccount.accessToken) {
+      return res.status(401).json({ msg: 'Not authorized' });
+    }
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
+
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: oauth2Client,
+    });
+
+    const response = await youtube.playlists.list({
+      mine: true,
+      part: 'snippet,contentDetails',
+    });
+
+    res.json(response.data.items);
+  } catch (err) {
+    console.error('Error fetching playlists:', err.message);
+    res.status(500).send('Server Error');
+  }
 };
 
 exports.createPlaylist = async (req, res) => {
-  // ... (implementation needed)
+  const { title, description, googleAccountId } = req.body;
+
+  try {
+    const googleAccount = await GoogleAccount.findOne({
+      _id: googleAccountId,
+      user: req.user.id,
+    });
+    if (!googleAccount || !googleAccount.accessToken) {
+      return res.status(401).json({ msg: 'Not authorized' });
+    }
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
+
+    const youtube = google.youtube({
+      version: 'v3',
+      auth: oauth2Client,
+    });
+
+    const response = await youtube.playlists.insert({
+      part: 'snippet,status',
+      requestBody: {
+        snippet: {
+          title,
+          description,
+        },
+        status: {
+          privacyStatus: 'private',
+        },
+      },
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    console.error('Error creating playlist:', err.message);
+    res.status(500).send('Server Error');
+  }
 };
