@@ -316,9 +316,9 @@ const UploadPage = () => {
               ></div>
             </div>
           )}
-          {(wrapper.status === 'completed' || wrapper.status === 'saved') && wrapper.videoId && (
+          {(wrapper.status === 'completed' || wrapper.status === 'saved') && (
             <VideoMetadataForm
-              videoId={wrapper.videoId}
+              videoId={wrapper.videoId!}
               token={token}
               playlists={playlists}
               metadata={metadata}
