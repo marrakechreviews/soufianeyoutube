@@ -28,6 +28,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/youtube', require('./routes/youtube'));
 app.use('/api/templates', require('./routes/templates'));
+app.use('/api/upload', require('./routes/upload'));
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
