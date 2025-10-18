@@ -60,8 +60,12 @@ const DashboardPage = () => {
           if (res.data.length > 0 && !selectedAccountId) {
             setSelectedAccountId(res.data[0]._id);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error('Error fetching Google accounts:', err);
+          if (err.response && err.response.status === 401) {
+            localStorage.removeItem('token');
+            router.push('/');
+          }
         } finally {
           setLoading(false);
         }
