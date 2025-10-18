@@ -9,25 +9,28 @@ const redisConnection = {
   port: process.env.REDIS_PORT || 6379,
 };
 
-const videoWorker = new Worker('video-uploads', async (job) => {
-  const { videoId } = job.data;
-  console.log(`Processing video upload for videoId: ${videoId}`);
+module.exports = (io) => {
+  const videoWorker = new Worker('video-uploads', async (job) => {
+    const { videoId } = job.data;
+    console.log(`Processing video upload for videoId: ${videoId}`);
+    let video; // Define video here to access it in the catch block
 
-  try {
-    const video = await Video.findById(videoId);
-    if (!video) {
-      throw new Error('Video not found');
-    }
+    try {
+      video = await Video.findById(videoId);
+      if (!video) {
+        throw new Error('Video not found');
+      }
 
-    const googleAccount = await GoogleAccount.findById(video.googleAccount);
-    if (!googleAccount) {
-      throw new Error('Google Account not found');
-    }
+      const googleAccount = await GoogleAccount.findById(video.googleAccount);
+      if (!googleAccount) {
+        throw new Error('Google Account not found');
+      }
 
-    video.status = 'uploading';
-    await video.save();
+      video.status = 'uploading';
+      await video.save();
+      io.emit('videoUpdate', { videoId, status: 'uploading' });
 
-    const oauth2Client = new google.auth.OAuth2(
+      const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET
     );
@@ -78,14 +81,17 @@ const videoWorker = new Worker('video-uploads', async (job) => {
       if (err) console.error(`Failed to delete temp file: ${video.filePath}`, err);
     });
 
+    io.emit('videoUpdate', { videoId, status: 'published', youtubeVideoId: video.youtubeVideoId });
     console.log(`Successfully uploaded videoId: ${videoId}`);
   } catch (error) {
     console.error(`Failed to upload videoId: ${videoId}`, error);
-    await Video.updateOne({ _id: videoId }, { $set: { status: 'failed' } });
+    if (video) {
+      await Video.updateOne({ _id: videoId }, { $set: { status: 'failed' } });
+      io.emit('videoUpdate', { videoId, status: 'failed', error: error.message });
+    }
     throw error; // Re-throw the error to let BullMQ know the job failed
   }
 }, { connection: redisConnection });
 
-console.log('Video worker started');
-
-module.exports = videoWorker;
+  console.log('Video worker started');
+};
