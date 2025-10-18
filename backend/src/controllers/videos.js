@@ -1,7 +1,5 @@
-const fs = require('fs');
-const { google } = require('googleapis');
 const Video = require('../models/Video');
-const GoogleAccount = require('../models/GoogleAccount');
+const videoQueue = require('../config/queue');
 
 // @desc    Save video metadata to the database
 exports.saveVideoMetadata = async (req, res) => {
@@ -38,89 +36,35 @@ exports.saveVideoMetadata = async (req, res) => {
   }
 };
 
-// @desc    Publish multiple videos to YouTube
+// @desc    Add videos to the upload queue
 exports.bulkPublish = async (req, res) => {
   const { videoIds } = req.body;
-  const results = {
-    success: [],
-    failed: [],
-  };
 
-  // We will process uploads sequentially for now to avoid overwhelming the API quota
-  // In a production app, this should be offloaded to a queue (e.g., BullMQ)
-  for (const videoId of videoIds) {
-    try {
-      const video = await Video.findById(videoId);
-      if (!video || video.user.toString() !== req.user.id) {
-        console.error(`Video not found or user not authorized for videoId: ${videoId}`);
-        results.failed.push({ videoId, reason: 'Not found or unauthorized' });
-        continue; // Skip to the next video
-      }
+  try {
+    const videos = await Video.find({
+      _id: { $in: videoIds },
+      user: req.user.id,
+    });
 
-      const googleAccount = await GoogleAccount.findById(video.googleAccount);
-      if (!googleAccount) {
-        video.status = 'failed';
-        await video.save();
-        console.error(`Google account not found for videoId: ${videoId}`);
-        results.failed.push({ videoId, reason: 'Google Account not found' });
-        continue;
-      }
-
-      // 1. Set up OAuth2 client
-      const oauth2Client = new google.auth.OAuth2();
-      oauth2Client.setCredentials({ access_token: googleAccount.accessToken });
-
-      // 2. Get YouTube API client
-      const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
-
-      // 3. Update status to 'uploading'
-      video.status = 'uploading';
-      await video.save();
-
-      // 4. Perform the upload
-      const snippet = {
-        title: video.title,
-        description: video.description,
-        channelId: video.channelId,
-      };
-      if (video.playlistId) {
-        snippet.playlistId = video.playlistId;
-      }
-
-      const response = await youtube.videos.insert({
-        part: 'snippet,status',
-        requestBody: {
-          snippet: snippet,
-          status: {
-            privacyStatus: video.privacy,
-            publishAt: video.publishAt,
-          },
-        },
-        media: {
-          body: fs.createReadStream(video.filePath),
-        },
-      });
-
-      // 5. Update video with YouTube ID and set status to 'published'
-      video.youtubeVideoId = response.data.id;
-      video.status = 'published';
-      await video.save();
-      results.success.push(videoId);
-
-      // Optional: Clean up the temporary file
-      fs.unlink(video.filePath, (err) => {
-        if (err) console.error(`Failed to delete temp file: ${video.filePath}`, err);
-      });
-    } catch (err) {
-      console.error(`Error processing video ${videoId}:`, err.message);
-      results.failed.push({ videoId, reason: err.message });
-      // Attempt to mark the specific video as failed
-      await Video.updateOne({ _id: videoId }, { $set: { status: 'failed' } });
+    if (videos.length !== videoIds.length) {
+      return res.status(404).json({ msg: 'One or more videos not found or unauthorized.' });
     }
-  }
 
-  res.status(200).json({
-    msg: 'Bulk publish process completed.',
-    results,
-  });
+    const jobs = videos.map(video => ({
+      name: 'upload-video',
+      data: { videoId: video._id },
+    }));
+
+    await videoQueue.addBulk(jobs);
+
+    await Video.updateMany(
+      { _id: { $in: videoIds } },
+      { $set: { status: 'queued' } }
+    );
+
+    res.json({ msg: 'Videos have been queued for upload.' });
+  } catch (err) {
+    console.error('Error queuing videos:', err.message);
+    res.status(500).send('Server Error');
+  }
 };

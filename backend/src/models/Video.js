@@ -39,7 +39,7 @@ const VideoSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'uploading', 'processing', 'published', 'failed'],
+    enum: ['pending', 'queued', 'uploading', 'processing', 'published', 'failed'],
     default: 'pending',
   },
   youtubeVideoId: {

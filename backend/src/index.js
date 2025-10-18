@@ -7,6 +7,9 @@ const passport = require('passport');
 // Passport config
 require('./config/passport');
 
+// Start video processing worker
+require('./workers/videoWorker');
+
 // Connect Database
 connectDB();
 
