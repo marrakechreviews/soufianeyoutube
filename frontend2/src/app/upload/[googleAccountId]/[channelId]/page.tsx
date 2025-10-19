@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useState, useEffect } from 'react';
-import io from 'socket.io-client';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { useParams } from 'next/navigation';
@@ -11,14 +10,12 @@ interface UploadableFile {
   file: File;
   status:
     | 'pending'
-    | 'uploading' // to our server
-    | 'completed' // uploaded to our server
+    | 'uploading'
+    | 'completed'
     | 'error'
-    | 'saved' // metadata saved
-    | 'queued' // waiting for youtube upload
-    | 'uploading' // to youtube
-    | 'published' // to youtube
-    | 'failed'; // youtube upload failed
+    | 'saved'
+    | 'uploading to youtube'
+    | 'published';
   progress: number;
   serverFilePath?: string;
   errorMessage?: string;
@@ -80,23 +77,6 @@ const UploadPage = () => {
       }
     };
     fetchData();
-
-    const socket = io('http://localhost:3000');
-
-    socket.on('videoUpdate', (data) => {
-      const { videoId, status, error } = data;
-      setFiles((prevFiles) =>
-        prevFiles.map((file) =>
-          file.videoId === videoId
-            ? { ...file, status: status, errorMessage: error }
-            : file
-        )
-      );
-    });
-
-    return () => {
-      socket.disconnect();
-    };
   }, [googleAccountId]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -264,16 +244,33 @@ const UploadPage = () => {
         return currentFiles;
       }
 
-      // The frontend will no longer set the status directly.
-      // It will wait for real-time updates from the server via Socket.IO.
-      axios.post(
-        '/api/videos/bulk-publish',
-        { videoIds: videoIdsToPublish },
-        { headers: { 'x-auth-token': token } }
-      ).catch(err => {
-        // Handle API errors (e.g., show a notification to the user)
-        console.error('Error queuing videos for bulk publish:', err);
-      });
+      (async () => {
+        try {
+          setFiles((prev) =>
+            prev.map((f) =>
+              videoIdsToPublish.includes(f.videoId!)
+                ? { ...f, status: 'uploading to youtube' }
+                : f
+            )
+          );
+
+          await axios.post(
+            '/api/videos/bulk-publish',
+            { videoIds: videoIdsToPublish },
+            { headers: { 'x-auth-token': token } }
+          );
+
+          setFiles((prev) =>
+            prev.map((f) =>
+              videoIdsToPublish.includes(f.videoId!)
+                ? { ...f, status: 'published' }
+                : f
+            )
+          );
+        } catch (err) {
+          console.error('Error during bulk publish:', err);
+        }
+      })();
 
       return currentFiles;
     });
