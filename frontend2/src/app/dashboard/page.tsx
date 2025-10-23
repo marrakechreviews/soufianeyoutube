@@ -132,10 +132,10 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto p-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.push('/templates')}
@@ -145,14 +145,14 @@ const DashboardPage = () => {
             </button>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-700 hover:bg-gray-600"
             >
               Logout
             </button>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-xl mb-8">
           <h2 className="text-xl font-semibold mb-4">Connected Google Accounts</h2>
           <ul className="space-y-2">
             {googleAccounts.map((account) => (
@@ -160,19 +160,19 @@ const DashboardPage = () => {
                 key={account._id}
                 onClick={() => setSelectedAccountId(account._id)}
                 className={`p-3 rounded-md cursor-pointer flex justify-between items-center transition-colors ${
-                  selectedAccountId === account._id ? 'bg-indigo-100' : 'hover:bg-gray-50'
+                  selectedAccountId === account._id ? 'bg-indigo-900' : 'hover:bg-gray-700'
                 }`}
               >
                 <div>
                   <p className="font-medium">{account.name}</p>
-                  <p className="text-sm text-gray-500">{account.email}</p>
+                  <p className="text-sm text-gray-400">{account.email}</p>
                 </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDisconnect(account._id);
                   }}
-                  className="px-3 py-1 text-sm font-medium text-red-600 border border-red-300 rounded-md hover:bg-red-50"
+                  className="px-3 py-1 text-sm font-medium text-red-400 border border-red-400 rounded-md hover:bg-red-900"
                 >
                   Disconnect
                 </button>
@@ -188,12 +188,12 @@ const DashboardPage = () => {
         </div>
 
         {selectedAccountId && (
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">YouTube Channels</h2>
               <button
                 onClick={fetchChannels}
-                className="px-3 py-1 text-sm font-medium text-indigo-600 border border-indigo-300 rounded-md hover:bg-indigo-50"
+                className="px-3 py-1 text-sm font-medium text-indigo-400 border border-indigo-400 rounded-md hover:bg-indigo-900"
               >
                 Refresh Channel List
               </button>
@@ -207,7 +207,7 @@ const DashboardPage = () => {
                   <li
                     key={channel.id}
                     onClick={() => router.push(`/upload/${selectedAccountId}/${channel.id}`)}
-                    className="p-4 rounded-lg flex items-center space-x-4 cursor-pointer bg-gray-50 hover:bg-gray-100 border-2 border-transparent hover:border-indigo-500"
+                    className="p-4 rounded-lg flex items-center space-x-4 cursor-pointer bg-gray-700 hover:bg-gray-600 border-2 border-transparent hover:border-indigo-500"
                   >
                     <img
                       src={channel.snippet.thumbnails.default.url}
@@ -215,10 +215,10 @@ const DashboardPage = () => {
                       className="w-16 h-16 rounded-full"
                     />
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold">
                         {channel.snippet.title}
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-400">
                         Subscribers: {channel.statistics.subscriberCount} | Videos:{' '}
                         {channel.statistics.videoCount}
                       </p>
@@ -228,8 +228,8 @@ const DashboardPage = () => {
               </ul>
             ) : (
               <div className="text-center py-8">
-                <h3 className="text-lg font-medium text-gray-900">No YouTube Channels Found</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="text-lg font-medium">No YouTube Channels Found</h3>
+                <p className="text-sm text-gray-400 mt-1">
                   This Google account does not have any YouTube channels associated with it yet.
                 </p>
                 <button
