@@ -26,7 +26,7 @@ const LoginPage = () => {
       );
       console.log(res.data); // Should contain the token
       // TODO: Store token securely (e.g., in HttpOnly cookie)
-      router.push('/'); // Redirect to dashboard/home
+      router.push('/dashboard'); // Redirect to dashboard/home
     } catch (err: any) {
       console.error(err.response?.data?.msg || err.message);
       setError(err.response?.data?.msg || 'An error occurred');
