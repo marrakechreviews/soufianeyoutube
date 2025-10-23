@@ -33,6 +33,7 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasProcessedToken = useRef(false);
@@ -41,36 +42,38 @@ const DashboardPage = () => {
     const tokenFromUrl = searchParams.get('token');
     const effectiveToken = tokenFromUrl || localStorage.getItem('token');
 
+    if (!effectiveToken) {
+      router.push('/');
+      return;
+    }
+
+    setIsAuthenticated(true);
+    setToken(effectiveToken);
+
     if (tokenFromUrl && !hasProcessedToken.current) {
       hasProcessedToken.current = true;
       localStorage.setItem('token', tokenFromUrl);
       router.replace('/dashboard', { scroll: false });
     }
 
-    setToken(effectiveToken);
-
-    if (effectiveToken) {
-      const fetchAccounts = async () => {
-        setLoading(true);
-        try {
-          const res = await axios.get('/api/youtube/accounts', {
-            headers: { 'x-auth-token': effectiveToken },
-          });
-          setGoogleAccounts(res.data);
-          if (res.data.length > 0 && !selectedAccountId) {
-            setSelectedAccountId(res.data[0]._id);
-          }
-        } catch (err) {
-          console.error('Error fetching Google accounts:', err);
-        } finally {
-          setLoading(false);
+    const fetchAccounts = async () => {
+      // setLoading is already true, no need to set it again.
+      try {
+        const res = await axios.get('/api/youtube/accounts', {
+          headers: { 'x-auth-token': effectiveToken },
+        });
+        setGoogleAccounts(res.data);
+        if (res.data.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(res.data[0]._id);
         }
-      };
-      fetchAccounts();
-    } else {
-      setLoading(false);
-    }
-  }, [searchParams, router, token, selectedAccountId]);
+      } catch (err) {
+        console.error('Error fetching Google accounts:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAccounts();
+  }, [searchParams, router, selectedAccountId]);
 
   const fetchChannels = useCallback(async () => {
     if (!selectedAccountId || !token) {
@@ -120,7 +123,7 @@ const DashboardPage = () => {
     router.push('/');
   };
 
-  if (loading) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Loading...</p>
