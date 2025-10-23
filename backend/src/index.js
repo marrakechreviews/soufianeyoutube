@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
 // Define Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/youtube', require('./routes/youtube'));
+app.use('/api/videos', require('./routes/videos'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/upload', require('./routes/upload'));
 

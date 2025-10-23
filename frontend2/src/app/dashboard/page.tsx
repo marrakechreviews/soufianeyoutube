@@ -191,12 +191,20 @@ const DashboardPage = () => {
           <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">YouTube Channels</h2>
-              <button
-                onClick={fetchChannels}
-                className="px-3 py-1 text-sm font-medium text-indigo-400 border border-indigo-400 rounded-md hover:bg-indigo-900"
-              >
-                Refresh Channel List
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => window.open('https://www.youtube.com/create_channel', '_blank')}
+                  className="px-3 py-1 text-sm font-medium text-green-400 border border-green-400 rounded-md hover:bg-green-900"
+                >
+                  Create New Channel
+                </button>
+                <button
+                  onClick={fetchChannels}
+                  className="px-3 py-1 text-sm font-medium text-indigo-400 border border-indigo-400 rounded-md hover:bg-indigo-900"
+                >
+                  Refresh Channel List
+                </button>
+              </div>
             </div>
 
             {loadingChannels ? (
@@ -206,7 +214,7 @@ const DashboardPage = () => {
                 {channels.map((channel) => (
                   <li
                     key={channel.id}
-                    onClick={() => router.push(`/upload/${selectedAccountId}/${channel.id}`)}
+                    onClick={() => router.push(`/channels/${channel.id}`)}
                     className="p-4 rounded-lg flex items-center space-x-4 cursor-pointer bg-gray-700 hover:bg-gray-600 border-2 border-transparent hover:border-indigo-500"
                   >
                     <img
