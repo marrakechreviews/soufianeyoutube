@@ -95,7 +95,8 @@ const DashboardPage = () => {
   }, [fetchChannels]);
 
   const handleConnect = () => {
-    window.location.href = `/api/auth/google?token=${token}`;
+    const storedToken = localStorage.getItem('token');
+    window.location.href = `/api/auth/google?token=${storedToken}`;
   };
 
   const handleDisconnect = async (accountId: string) => {
